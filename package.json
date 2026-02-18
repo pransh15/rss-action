@@ -1,0 +1,24 @@
+{
+  "name": "rss-feed-to-pr",
+  "version": "1.0.0",
+  "description": "GitHub Action: fetch RSS/Atom feeds and open PRs to keep a markdown link list up-to-date.",
+  "private": true,
+  "main": "src/index.js",
+  "scripts": {
+    "build": "ncc build src/index.js -o dist --source-map --license licenses.txt",
+    "lint": "node --check src/index.js"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/exec": "^1.1.1",
+    "@actions/github": "^6.0.0",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

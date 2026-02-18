@@ -1,0 +1,73 @@
+name: Fetch RSS Feeds
+
+# ─── Triggers ────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    # Runs at 00:00, 06:00, 12:00, and 18:00 UTC every day.
+    - cron: '0 */6 * * *'
+
+  # Allow triggering manually from the Actions tab for testing.
+  workflow_dispatch:
+    inputs:
+      max_links:
+        description: 'Override max_links for this run'
+        required: false
+        default: '10'
+
+# ─── Permissions ─────────────────────────────────────────────────────────────
+permissions:
+  contents: write        # push branch
+  pull-requests: write   # open PR
+
+# ─── Jobs ────────────────────────────────────────────────────────────────────
+jobs:
+  rss-to-pr:
+    name: Fetch RSS and create PR
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repo so the action can read/write files and push.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # A PAT with repo + pull-request scopes is recommended if you want
+          # the resulting PR to trigger other workflows (GITHUB_TOKEN can't).
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Run the rss-action (this repo is the action itself).
+      #    If you're consuming this from another repo, replace `./` with:
+      #      uses: <your-org>/rss-action@v1
+      - name: Fetch RSS feeds and open PR
+        id: rss
+        uses: ./
+        with:
+          # ── Required ───────────────────────────────────────────────────────
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Add your feeds here — one per line or comma-separated.
+          rss_urls: |
+            https://github.blog/feed/
+            https://www.smashingmagazine.com/feed/
+            https://css-tricks.com/feed/
+
+          # ── Optional ───────────────────────────────────────────────────────
+
+          # Maximum links to keep. Oldest are dropped when the file exceeds this.
+          # Configurable between 5 and any positive integer; common choices: 5, 10.
+          max_links: ${{ github.event.inputs.max_links || '10' }}
+
+          # Markdown file that receives the link list (relative to repo root).
+          output_file: 'links.md'
+
+          # Branch prefix for auto-created update branches.
+          branch_prefix: 'rss-update'
+
+          # PR target branch.
+          base_branch: 'main'
+
+      # 3. Echo the outputs so they're visible in the run log.
+      - name: Log results
+        if: always()
+        run: |
+          echo "PR URL          : ${{ steps.rss.outputs.pr_url }}"
+          echo "New items added : ${{ steps.rss.outputs.new_items_count }}"

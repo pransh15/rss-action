@@ -1,0 +1,80 @@
+name: 'RSS Feed to Markdown PR'
+description: >
+  Fetches one or more RSS feeds, appends new blog/newsletter links (with UTM
+  parameters) to a markdown file, enforces a configurable max-link limit by
+  dropping the oldest entries, and opens a pull request with the diff.
+
+inputs:
+  rss_urls:
+    description: >
+      Newline- or comma-separated list of RSS/Atom feed URLs to fetch.
+    required: true
+
+  max_links:
+    description: >
+      Maximum number of links to keep in the output file.
+      When exceeded, the oldest entries are removed automatically.
+      Must be 5 or 10 (or any positive integer you choose).
+    required: false
+    default: '10'
+
+  output_file:
+    description: >
+      Relative path (from the repo root) to the markdown file that will
+      receive the link list. Created automatically if it does not exist.
+    required: false
+    default: 'links.md'
+
+  github_token:
+    description: >
+      GitHub token used to push the branch and open the pull request.
+      Use ${{ secrets.GITHUB_TOKEN }} or a PAT if cross-repo access is needed.
+    required: true
+
+  branch_prefix:
+    description: Branch name prefix for auto-created update branches.
+    required: false
+    default: 'rss-update'
+
+  base_branch:
+    description: Target branch for the pull request.
+    required: false
+    default: 'main'
+
+outputs:
+  pr_url:
+    description: HTML URL of the created pull request, or empty string if nothing changed.
+    value: ${{ steps.run.outputs.pr_url }}
+
+  new_items_count:
+    description: Number of new links added in this run.
+    value: ${{ steps.run.outputs.new_items_count }}
+
+branding:
+  icon: 'radio'       # Feather icon — closest to "feed/RSS"
+  color: 'orange'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install action dependencies
+      shell: bash
+      run: npm install --prefix "${{ github.action_path }}" --no-audit --no-fund --loglevel=error
+
+    - name: Fetch RSS feeds and open PR
+      id: run
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        INPUT_RSS_URLS:      ${{ inputs.rss_urls }}
+        INPUT_MAX_LINKS:     ${{ inputs.max_links }}
+        INPUT_OUTPUT_FILE:   ${{ inputs.output_file }}
+        INPUT_GITHUB_TOKEN:  ${{ inputs.github_token }}
+        INPUT_BRANCH_PREFIX: ${{ inputs.branch_prefix }}
+        INPUT_BASE_BRANCH:   ${{ inputs.base_branch }}
+      run: node "${{ github.action_path }}/src/index.js"
